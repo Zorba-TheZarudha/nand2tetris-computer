@@ -1,0 +1,96 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/2/ALU.hdl
+/**
+ * ALU (Arithmetic Logic Unit):
+ * Computes out = one of the following functions:
+ *                0, 1, -1,
+ *                x, y, !x, !y, -x, -y,
+ *                x + 1, y + 1, x - 1, y - 1,
+ *                x + y, x - y, y - x,
+ *                x & y, x | y
+ * on the 16-bit inputs x, y,
+ * according to the input bits zx, nx, zy, ny, f, no.
+ * In addition, computes the two output bits:
+ * if (out == 0) zr = 1, else zr = 0
+ * if (out < 0)  ng = 1, else ng = 0
+ */
+// Implementation: Manipulates the x and y inputs
+// and operates on the resulting values, as follows:
+// if (zx == 1) sets x = 0        // 16-bit constant
+// if (nx == 1) sets x = !x       // bitwise not
+// if (zy == 1) sets y = 0        // 16-bit constant
+// if (ny == 1) sets y = !y       // bitwise not
+// if (f == 1)  sets out = x + y  // integer 2's complement addition
+// if (f == 0)  sets out = x & y  // bitwise and
+// if (no == 1) sets out = !out   // bitwise not
+
+CHIP ALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs        
+        zx, // zero the x input?
+        nx, // negate the x input?
+        zy, // zero the y input?
+        ny, // negate the y input?
+        f,  // compute (out = x + y) or (out = x & y)?
+        no; // negate the out output?
+    OUT 
+        out[16], // 16-bit output
+        zr,      // if (out == 0) equals 1, else 0
+        ng;      // if (out < 0)  equals 1, else 0
+
+    PARTS:
+    Mux16(a= x, b= false, sel= zx, out= x0);
+    Not16(in= x0, out= notX);
+    Mux16(a= x0, b= notX, sel= nx, out= x1);
+
+    Mux16(a= y, b= false, sel= zy, out= y0);
+    Not16(in= y0, out= noty);
+    Mux16(a= y0, b= noty, sel= ny, out= y1);
+
+    And16(a= x1, b= y1, out= x1Andy1);
+    Add16(a= x1, b= y1, out= x1Plusy1);
+    Mux16(a= x1Andy1, b= x1Plusy1, sel= f, out= x3);
+
+    Not16(in= x3, out= notX3);
+    Mux16(a= x3, b= notX3, sel= no, out= out, out[15]= ng, out[0..7]= out1, out[8..15]=out2);
+
+    Or8Way(in= out1, out= outOr1);
+    Or8Way(in= out2, out= outOr2);
+    Or(a= outOr1, b= outOr2, out= or16Bits);
+    Not(in=or16Bits, out=zr);
+
+
+    /*// ----- Preprocess x -----
+    Mux16(a=x, b=false, sel=zx, out=x0);
+    Not16(in=x0, out=notX0);
+    Mux16(a=x0, b=notX0, sel=nx, out=x1);
+
+    // ----- Preprocess y -----
+    Mux16(a=y, b=false, sel=zy, out=y0);
+    Not16(in=y0, out=notY0);
+    Mux16(a=y0, b=notY0, sel=ny, out=y1);
+
+    // ----- Core operation -----
+    And16(a=x1, b=y1, out=andOut);
+    Add16(a=x1, b=y1, out=addOut);
+    Mux16(a=andOut, b=addOut, sel=f, out=coreOut);
+
+    // ----- Output negation -----
+    Not16(in=coreOut, out=notCoreOut);
+    Mux16(a=coreOut, b=notCoreOut, sel=no, out=outFinal);
+
+    // ----- Assign final output -----
+    // (direct connection via Mux pass-through)
+    Mux16(a=outFinal, b=outFinal, sel=false, out=out);
+
+    // ----- Zero flag (zr) -----
+    Or8Way(in=outFinal[0..7], out=orLow);
+    Or8Way(in=outFinal[8..15], out=orHigh);
+    Or(a=orLow, b=orHigh, out=orAll);
+    Not(in=orAll, out=zr);
+
+    // ----- Negative flag (ng) -----
+    And(a=outFinal[15], b=true, out=ng);*/
+}
